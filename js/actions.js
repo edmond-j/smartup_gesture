@@ -1,6 +1,6 @@
-// modelMore actionModel
+// modelMore actionModel - Manifest V3 Compatible
 console.log("actions")
-let i=0,ii=0,iii=0;
+
 let actions={
 	mges_group:["ag_none","ag_nav",/*"ag_scroll",*/"ag_tab","ag_window",/*"ag_copy",*/"ag_txt","ag_lnk","ag_img",/*"ag_apps",*/"ag_chrome","ag_su","ag_apps","ag_others","ag_exp","ag_dep"],
 	mges:[
@@ -95,6 +95,7 @@ let actions={
 			{name:"speaker"},
 			{name:"jslist"},
 			{name:"savepdf"},
+			{name:"lottery"},
 			{name:"convertcase"},
 			{name:"autoreload"},
 			{name:"homepage"},
@@ -182,26 +183,23 @@ let actions={
 		]
 	]
 }
-actions.popactions=actions.mgesactions=actions.mges;
-actions.popactions_group=actions.mgesactions_group=actions.mges_group;
 
-actions.touch_group=actions.mges_group;
-
-
-actions.mgesactions=actions.mges;
-actions.touch=actions.mges;
-//actions.touchactions_group=actions.mgesactions_group=actions.mges_group;
-
-actions.tsdrg=actions.tdrg;
-actions.lsdrg=actions.ldrg;
-actions.isdrg=actions.idrg;
-actions.rges=actions.mges;
-actions.wges=actions.mges;
-actions.icon=actions.mges;
-actions.ctm=actions.mges;
-actions.pop=actions.mges;
-actions.dca=actions.mges;
-actions.ksa=actions.mges;
+// Set up aliases
+actions.popactions = actions.mgesactions = actions.mges;
+actions.popactions_group = actions.mgesactions_group = actions.mges_group;
+actions.touch_group = actions.mges_group;
+actions.mgesactions = actions.mges;
+actions.touch = actions.mges;
+actions.tsdrg = actions.tdrg;
+actions.lsdrg = actions.ldrg;
+actions.isdrg = actions.idrg;
+actions.rges = actions.mges;
+actions.wges = actions.mges;
+actions.icon = actions.mges;
+actions.ctm = actions.mges;
+actions.pop = actions.mges;
+actions.dca = actions.mges;
+actions.ksa = actions.mges;
 
 let actionOptions={
 	special:{
@@ -410,31 +408,122 @@ let actionOptions={
 	}
 }
 
-let actionRemove=function(actionName){
-	for(i=0;i<Object.keys(actions).length;i++){
-		for(ii=0;ii<actions[Object.keys(actions)[i]].length;ii++){
-			for(iii=0;actions[Object.keys(actions)[i]][ii].length&&iii<actions[Object.keys(actions)[i]][ii].length;iii++){
-				if(actionName.contains(actions[Object.keys(actions)[i]][ii][iii].name)){
-					actions[Object.keys(actions)[i]][ii].splice(iii,1);
-				}				
+// Manifest V3 compatible action removal function
+let actionRemove = function(actionNames) {
+	for(let i = 0; i < Object.keys(actions).length; i++) {
+		const actionKey = Object.keys(actions)[i];
+		if (Array.isArray(actions[actionKey])) {
+			for(let ii = 0; ii < actions[actionKey].length; ii++) {
+				if (Array.isArray(actions[actionKey][ii])) {
+					for(let iii = actions[actionKey][ii].length - 1; iii >= 0; iii--) {
+						if (actions[actionKey][ii][iii] && actions[actionKey][ii][iii].name) {
+							if (actionNames.includes(actions[actionKey][ii][iii].name)) {
+								actions[actionKey][ii].splice(iii, 1);
+							}
+						}
+					}
+				}
 			}
 		}
 	}
 }
-chrome.tts?chrome.tts.getVoices(function(voice){
-	for(i=0;i<voice.length;i++){
-		if(voice[i].voiceName=="native"){
-			actionOptions.selects.n_voicename.splice(0,0,voice[i].voiceName);
-		}else{
-			actionOptions.selects.n_voicename.push(voice[i].voiceName)
+
+// Initialize TTS voices using Manifest V3 compatible Promise-based API
+async function initializeTTSVoices() {
+	if (chrome.tts && chrome.tts.getVoices) {
+		try {
+			const voices = await chrome.tts.getVoices();
+			// Clear existing voices first
+			actionOptions.selects.n_voicename = [];
+			
+			for(let i = 0; i < voices.length; i++) {
+				if(voices[i].voiceName === "native") {
+					actionOptions.selects.n_voicename.unshift(voices[i].voiceName);
+				} else {
+					actionOptions.selects.n_voicename.push(voices[i].voiceName);
+				}
+			}
+			
+			// Ensure at least "native" is available
+			if (actionOptions.selects.n_voicename.length === 0) {
+				actionOptions.selects.n_voicename.push("native");
+			}
+		} catch (error) {
+			console.warn("Failed to get TTS voices:", error);
+			// Fallback to native voice
+			actionOptions.selects.n_voicename = ["native"];
 		}
+	} else {
+		// Fallback if TTS API is not available
+		actionOptions.selects.n_voicename = ["native"];
 	}
-}):null;
+}
 
-//copy image
-// (chrome.clipboard&&chrome.clipboard.setImageData)?null:actionRemove(["copyimg"]);
+// Check for clipboard image support using modern Web APIs
+function checkClipboardImageSupport() {
+	// Check for modern Clipboard API support
+	if (navigator.clipboard && navigator.clipboard.write) {
+		return true;
+	}
+	
+	// Fallback check for legacy Chrome clipboard API
+	if (chrome.clipboard && chrome.clipboard.setImageData) {
+		return true;
+	}
+	
+	return false;
+}
 
-//save pdf
-(!chrome.tabs.saveAsPDF)?actionRemove(["savepdf"]):null;
+// Check for PDF save support
+function checkPDFSaveSupport() {
+	return !!(chrome.tabs && chrome.tabs.saveAsPDF);
+}
 
-(browserType!="fx")?actionRemove(["new_bk","new_search","readermode"]):null;
+// Check browser type safely
+function getBrowserType() {
+	// Try to detect browser type safely
+	if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id) {
+		return 'chrome';
+	}
+	
+	// Check for Firefox
+	if (typeof browser !== 'undefined' && browser.runtime) {
+		return 'firefox';
+	}
+	
+	// Default fallback
+	return 'unknown';
+}
+
+// Initialize feature detection and cleanup
+async function initializeActions() {
+	// Initialize TTS voices
+	await initializeTTSVoices();
+	
+	// Check clipboard image support
+	if (!checkClipboardImageSupport()) {
+		actionRemove(["copyimg"]);
+	}
+	
+	// Check PDF save support
+	if (!checkPDFSaveSupport()) {
+		actionRemove(["savepdf"]);
+	}
+	
+	// Check browser-specific features
+	const browserType = getBrowserType();
+	if (browserType !== "firefox" && browserType !== "fx") {
+		actionRemove(["set_bk", "set_search", "readermode"]);
+	}
+}
+
+// Initialize when the script loads
+if (typeof chrome !== 'undefined' && chrome.runtime) {
+	// In extension context
+	initializeActions().catch(error => {
+		console.error("Failed to initialize actions:", error);
+	});
+} else {
+	// In web page context or testing
+	console.warn("Chrome extension APIs not available");
+}
