@@ -13,7 +13,7 @@
 			"content":[
 				"new translation: pt_BR, by JNylson",
 				"fix image engine: #293, #321, #294",
-				"fix bugs: #316, #311, #290, #284, #301，#119，#219, #326",
+				"fix bugs: #316, #311, #290, #284, #301, #119, #219, #326",
 				"delete mini-apps: lottery"
 			]
 		},
